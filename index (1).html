@@ -1,0 +1,457 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Platformu - İşlevsel Butonlar ve Reklam</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleUp {
+            from { transform: scale(0.95); }
+            to { transform: scale(1); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-in; }
+        .hover-scale:hover { transform: scale(1.05); transition: transform 0.3s; }
+        .modal { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0; 
+            background: rgba(0, 0, 0, 0.5); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        .modal-content { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 1rem; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); 
+            animation: scaleUp 0.3s ease; 
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #6B48FF, #FF6B35);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 4rem 1rem;
+            background: #F5F7FA;
+            border-radius: 1 adunitrem;
+            margin: 1rem;
+        }
+        .ad-banner {
+            background: #e0e0e0;
+            padding: 1rem;
+            text-align: center;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        .dropzone {
+            border: 2px dashed #6B48FF;
+            padding: 2rem;
+            text-align: center;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .dropzone.dragover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+
+        function App() {
+            const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+            const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+            const [formData, setFormData] = useState({
+                name: '',
+                email: '',
+                password: '',
+                confirmPassword: ''
+            });
+            const [uploadData, setUploadData] = useState({
+                title: '',
+                description: '',
+                file: null,
+                category: '',
+                privacy: 'public'
+            });
+            const [error, setError] = useState('');
+            const [success, setSuccess] = useState('');
+            const [videos, setVideos] = useState([]); // Video listesi
+            const [searchQuery, setSearchQuery] = useState('');
+            const [searchResults, setSearchResults] = useState(null);
+            const [uploadProgress, setUploadProgress] = useState(0);
+
+            const handleInputChange = (e) => {
+                setFormData({ ...formData, [e.target.name]: e.target.value });
+            };
+
+            const handleUploadInputChange = (e) => {
+                setUploadData({ ...uploadData, [e.target.name]: e.target.value });
+            };
+
+            const handleFileChange = (e) => {
+                setUploadData({ ...uploadData, file: e.target.files[0] });
+            };
+
+            const handleRegister = () => {
+                const { name, email, password, confirmPassword } = formData;
+                if (!name || !email || !password || !confirmPassword) {
+                    setError('Lütfen tüm alanları doldurun.');
+                    return;
+                }
+                if (!email.includes('@')) {
+                    setError('Geçerli bir e-posta adresi girin.');
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    setError('Şifreler eşleşmiyor.');
+                    return;
+                }
+
+                const encryptedData = btoa(JSON.stringify(formData));
+                console.log('Şifrelenmiş Veri:', encryptedData);
+
+                setError('');
+                setSuccess('Kayıt başarılı! Verileriniz şifrelenerek saklandı.');
+                setIsRegisterModalOpen(false);
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { y: 0.6 }
+                    });
+                }, 500);
+            };
+
+            const handleUpload = () => {
+                const { title, description, file, category } = uploadData;
+                if (!title || !description || !file || !category) {
+                    setError('Lütfen tüm alanları doldurun.');
+                    return;
+                }
+
+                // Simüle edilmiş yükleme işlemi
+                setUploadProgress(0);
+                const interval = setInterval(() => {
+                    setUploadProgress((prev) => {
+                        if (prev >= 100) {
+                            clearInterval(interval);
+                            const newVideo = { title, description, category };
+                            setVideos([...videos, newVideo]);
+                            setSuccess('Video başarıyla yüklendi!');
+                            setIsUploadModalOpen(false);
+                            setTimeout(() => {
+                                confetti({
+                                    particleCount: 100,
+                                    spread: 70,
+                                    origin: { y: 0.6 }
+                                });
+                            }, 500);
+                            return 100;
+                        }
+                        return prev + 10;
+                    });
+                }, 500);
+            };
+
+            const handleSearch = () => {
+                if (!searchQuery) {
+                    setSearchResults('Lütfen bir arama terimi girin.');
+                    return;
+                }
+                setSearchResults(`Arama sonuçları: "${searchQuery}"`);
+            };
+
+            return (
+                <div>
+                    {/* Header */}
+                    <header className="gradient-bg p-4 flex justify-between items-center">
+                        <div className="text-2xl font-bold text-white">Video Platformu</div>
+                        <div className="flex items-center space-x-4">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Video ara..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="p-2 rounded-l-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all duration-300 bg-white text-gray-900"
+                                />
+                                <button 
+                                    onClick={handleSearch}
+                                    className="bg-orange-500 text-white p-2 rounded-r-md hover:bg-orange-600 transition-all duration-300"
+                                >
+                                    <i className="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <button 
+                                onClick={() => setIsUploadModalOpen(true)}
+                                className="bg-orange-500 text-white p-2 rounded-md hover:bg-orange-600 transition-all duration-300"
+                            >
+                                Video Yükle
+                            </button>
+                            <button 
+                                onClick={() => setIsRegisterModalOpen(true)} 
+                                className="bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 transition-all duration-300"
+                            >
+                                Kayıt Ol
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Hero Section */}
+                    <section className="relative h-96 flex items-center justify-center text-center animate-fadeIn">
+                        <div className="absolute inset-0 gradient-bg opacity-80"></div>
+                        <div className="relative z-10">
+                            <h1 className="text-4xl font-bold text-white mb-4">Videolarını Paylaş, İlham Ver!</h1>
+                            <button 
+                                onClick={() => setIsUploadModalOpen(true)}
+                                className="bg-orange-500 text-white px-6 py-3 rounded-md hover:bg-orange-600 hover-scale"
+                            >
+                                Hemen Başla
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* Google Ads Banner (Simülasyon) */}
+                    <div className="ad-banner">
+                        <p className="text-gray-700">[Google Ads] - Bu bir reklam alanıdır. Gerçek bir reklam için AdSense entegrasyonu gereklidir.</p>
+                    </div>
+
+                    {/* Search Results */}
+                    {searchResults && (
+                        <section className="p-6">
+                            <h2 className="text-2xl font-bold mb-4 animate-fadeIn text-purple-600 dark:text-purple-400">{searchResults}</h2>
+                        </section>
+                    )}
+
+                    {/* Featured Videos or Empty State */}
+                    <section className="p-6">
+                        {videos.length > 0 ? (
+                            <>
+                                <h2 className="text-2xl font-bold mb-4 animate-fadeIn text-purple-600 dark:text-purple-400">Öne Çıkan Videolar</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {videos.map((video, index) => (
+                                        <div key={index} className="bg-white dark:bg-gray-700 p-4 rounded-xl shadow-lg hover-scale">
+                                            <div className="w-full h-48 bg-gray-300 rounded-lg mb-2 flex items-center justify-center">
+                                                <p className="text-gray-600">[Video Önizleme]</p>
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-purple-600 dark:text-purple-400">{video.title}</h3>
+                                            <p className="text-gray-600 dark:text-gray-300">{video.description}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">Kategori: {video.category}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="empty-state">
+                                <h2 className="text-2xl font-bold text-purple-600 mb-4">Henüz Hiç Video Yok!</h2>
+                                <p className="text-gray-600 dark:text-gray-300 mb-4">İlk videoyu sen yükle ve topluluğu başlat!</p>
+                                <button 
+                                    onClick={() => setIsUploadModalOpen(true)}
+                                    className="bg-orange-500 text-white px-6 py-3 rounded-md hover:bg-orange-600 hover-scale"
+                                >
+                                    Video Yükle
+                                </button>
+                            </div>
+                        )}
+                    </section>
+
+                    {/* Registration Modal */}
+                    {isRegisterModalOpen && (
+                        <div className="modal" onClick={() => setIsRegisterModalOpen(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <h2 className="text-2xl font-bold mb-4 text-purple-600">Kayıt Ol</h2>
+                                {error && <p className="text-red-500 mb-2">{error}</p>}
+                                {success && <p className="text-green-500 mb-2">{success}</p>}
+                                <input
+                                    type="text"
+                                    name="name"
+                                    placeholder="Adınız"
+                                    value={formData.name}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 mb-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <input
+                                    type="email"
+                                    name="email"
+                                    placeholder="E-posta"
+                                    value={formData.email}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 mb-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <input
+                                    type="password"
+                                    name="password"
+                                    placeholder="Şifre"
+                                    value={formData.password}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 mb-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <input
+                                    type="password"
+                                    name="confirmPassword"
+                                    placeholder="Şifreyi Onayla"
+                                    value={formData.confirmPassword}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 mb-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <button
+                                    onClick={handleRegister}
+                                    className="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 transition-all duration-300"
+                                >
+                                    Kayıt Ol
+                                </button>
+                                <button
+                                    onClick={() => setIsRegisterModalOpen(false)}
+                                    className="w-full mt-2 text-gray-500 hover:text-gray-700"
+                                >
+                                    Kapat
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Upload Modal */}
+                    {isUploadModalOpen && (
+                        <div className="modal" onClick={() => setIsUploadModalOpen(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <h2 className="text-2xl font-bold mb-4 text-purple-600">Video Yükle</h2>
+                                {error && <p className="text-red-500 mb-2">{error}</p>}
+                                {success && <p className="text-green-500 mb-2">{success}</p>}
+                                <input
+                                    type="text"
+                                    name="title"
+                                    placeholder="Video Başlığı"
+                                    value={uploadData.title}
+                                    onChange={handleUploadInputChange}
+                                    className="w-full p-2 mb-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <textarea
+                                    name="description"
+                                    placeholder="Açıklama"
+                                    value={uploadData.description}
+                                    onChange={handleUploadInputChange}
+                                    className="w-full p-2 mb-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <div className="dropzone">
+                                    <input
+                                        type="file"
+                                        accept="video/*"
+                                        onChange={handleFileChange}
+                                        className="hidden"
+                                        id="fileInput"
+                                    />
+                                    <label htmlFor="fileInput" className="cursor-pointer text-purple-600">
+                                        {uploadData.file ? uploadData.file.name : 'Video dosyasını seçin veya buraya sürükleyin'}
+                                    </label>
+                                </div>
+                                <select
+                                    name="category"
+                                    value={uploadData.category}
+                                    onChange={handleUploadInputChange}
+                                    className="w-full p-2 mb-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                >
+                                    <option value="">Kategori Seçin</option>
+                                    <option value="Eğitim">Eğitim</option>
+                                    <option value="Eğlence">Eğlence</option>
+                                    <option value="Spor">Spor</option>
+                                </select>
+                                <select
+                                    name="privacy"
+                                    value={uploadData.privacy}
+                                    onChange={handleUploadInputChange}
+                                    className="w-full p-2 mb-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                >
+                                    <option value="public">Herkese Açık</option>
+                                    <option value="private">Özel</option>
+                                    <option value="unlisted">Listelenmeyen</option>
+                                </select>
+                                {uploadProgress > 0 && (
+                                    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                                        <div
+                                            className="bg-purple-600 h-2.5 rounded-full"
+                                            style={{ width: `${uploadProgress}%` }}
+                                        ></div>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={handleUpload}
+                                    className="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 transition-all duration-300"
+                                >
+                                    Yükle
+                                </button>
+                                <button
+                                    onClick={() => setIsUploadModalOpen(false)}
+                                    className="w-full mt-2 text-gray-500 hover:text-gray-700"
+                                >
+                                    Kapat
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
