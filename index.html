@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Platformu - Siyah Metinler</title>
+    <title>Video Platformu - Video Görünürlüğü</title>
     <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/babel.min.js"></script>
@@ -95,14 +95,14 @@
             box-shadow: 0 0 0 2px #6B48FF;
         }
         .modal-content * {
-            color: #000000 !important; /* Modal içindeki tüm metinler siyah */
+            color: #000000 !important;
         }
         .dark .modal-content {
-            background: #4a5568; /* Karanlık modda modal arka planı */
+            background: #4a5568;
         }
         .dark .modal-content * {
-            color: #000000 !important; /* Karanlık modda da siyah metin */
-            text-shadow: 0 0 2px #ffffff; /* Okunabilirlik için beyaz gölge */
+            color: #000000 !important;
+            text-shadow: 0 0 2px #ffffff;
         }
     </style>
 </head>
@@ -193,8 +193,9 @@
                     setUploadProgress((prev) => {
                         if (prev >= 100) {
                             clearInterval(interval);
-                            const newVideo = { title, description, category };
-                            setVideos([...videos, newVideo]);
+                            const newVideo = { title, description, category, id: Date.now() }; // Benzersiz ID ekleme
+                            setVideos((prevVideos) => [...prevVideos, newVideo]); // Durumu güncelle
+                            console.log('Video eklendi:', newVideo); // Hata ayıklaması için
                             setSuccess('Video başarıyla yüklendi!');
                             setIsUploadModalOpen(false);
                             setTimeout(() => {
@@ -288,8 +289,8 @@
                             <>
                                 <h2 className="text-2xl font-bold mb-4 animate-fadeIn text-purple-600 dark:text-purple-400">Öne Çıkan Videolar</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {videos.map((video, index) => (
-                                        <div key={index} className="bg-white dark:bg-gray-700 p-4 rounded-xl shadow-lg hover-scale">
+                                    {videos.map((video) => (
+                                        <div key={video.id} className="bg-white dark:bg-gray-700 p-4 rounded-xl shadow-lg hover-scale">
                                             <div className="w-full h-48 bg-gray-300 rounded-lg mb-2 flex items-center justify-center">
                                                 <p className="text-gray-600">[Video Önizleme]</p>
                                             </div>
