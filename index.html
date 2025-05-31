@@ -1,48 +1,9 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Platformu - İşlevsel Butonlar ve Reklam</title>
+    <title>Video Platformu - Siyah Metinler</title>
     <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/babel.min.js"></script>
@@ -74,6 +35,7 @@
             display: flex; 
             justify-content: center; 
             align-items: center; 
+            z-index: 1000;
         }
         .modal-content { 
             background: white; 
@@ -81,6 +43,8 @@
             border-radius: 1rem; 
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); 
             animation: scaleUp 0.3s ease; 
+            max-height: 80vh; 
+            overflow-y: auto; 
         }
         .gradient-bg {
             background: linear-gradient(135deg, #6B48FF, #FF6B35);
@@ -89,10 +53,11 @@
             text-align: center;
             padding: 4rem 1rem;
             background: #F5F7FA;
-            border-radius: 1 adunitrem;
+            border-radius: 1rem;
             margin: 1rem;
         }
         .ad-banner {
+            min-height: 90px;
             background: #e0e0e0;
             padding: 1rem;
             text-align: center;
@@ -108,6 +73,36 @@
         }
         .dropzone.dragover {
             background: #f0f0f0;
+        }
+        .hero-section {
+            position: relative;
+            z-index: 10;
+        }
+        .search-input {
+            color: #000000 !important;
+            background-color: #f9f9f9 !important;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem 0 0 0.375rem;
+        }
+        .dark .search-input {
+            color: #000000 !important;
+            background-color: #4a5568 !important;
+            text-shadow: 0 0 2px #000000;
+        }
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #6B48FF;
+        }
+        .modal-content * {
+            color: #000000 !important; /* Modal içindeki tüm metinler siyah */
+        }
+        .dark .modal-content {
+            background: #4a5568; /* Karanlık modda modal arka planı */
+        }
+        .dark .modal-content * {
+            color: #000000 !important; /* Karanlık modda da siyah metin */
+            text-shadow: 0 0 2px #ffffff; /* Okunabilirlik için beyaz gölge */
         }
     </style>
 </head>
@@ -134,7 +129,7 @@
             });
             const [error, setError] = useState('');
             const [success, setSuccess] = useState('');
-            const [videos, setVideos] = useState([]); // Video listesi
+            const [videos, setVideos] = useState([]);
             const [searchQuery, setSearchQuery] = useState('');
             const [searchResults, setSearchResults] = useState(null);
             const [uploadProgress, setUploadProgress] = useState(0);
@@ -151,14 +146,19 @@
                 setUploadData({ ...uploadData, file: e.target.files[0] });
             };
 
+            const validateEmail = (email) => {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            };
+
             const handleRegister = () => {
                 const { name, email, password, confirmPassword } = formData;
                 if (!name || !email || !password || !confirmPassword) {
                     setError('Lütfen tüm alanları doldurun.');
                     return;
                 }
-                if (!email.includes('@')) {
-                    setError('Geçerli bir e-posta adresi girin.');
+                if (!validateEmail(email)) {
+                    setError('Lütfen geçerli bir e-posta adresi girin (örneğin, kullanici@alan.com).');
                     return;
                 }
                 if (password !== confirmPassword) {
@@ -188,7 +188,6 @@
                     return;
                 }
 
-                // Simüle edilmiş yükleme işlemi
                 setUploadProgress(0);
                 const interval = setInterval(() => {
                     setUploadProgress((prev) => {
@@ -218,6 +217,7 @@
                     return;
                 }
                 setSearchResults(`Arama sonuçları: "${searchQuery}"`);
+                setTimeout(() => setSearchResults(null), 5000);
             };
 
             return (
@@ -232,7 +232,7 @@
                                     placeholder="Video ara..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="p-2 rounded-l-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all duration-300 bg-white text-gray-900"
+                                    className="search-input p-2 rounded-l-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all duration-300"
                                 />
                                 <button 
                                     onClick={handleSearch}
@@ -257,7 +257,7 @@
                     </header>
 
                     {/* Hero Section */}
-                    <section className="relative h-96 flex items-center justify-center text-center animate-fadeIn">
+                    <section className="hero-section relative h-96 flex items-center justify-center text-center animate-fadeIn">
                         <div className="absolute inset-0 gradient-bg opacity-80"></div>
                         <div className="relative z-10">
                             <h1 className="text-4xl font-bold text-white mb-4">Videolarını Paylaş, İlham Ver!</h1>
@@ -270,9 +270,9 @@
                         </div>
                     </section>
 
-                    {/* Google Ads Banner (Simülasyon) */}
+                    {/* Google Ads Banner (Yer Tutucu) */}
                     <div className="ad-banner">
-                        <p className="text-gray-700">[Google Ads] - Bu bir reklam alanıdır. Gerçek bir reklam için AdSense entegrasyonu gereklidir.</p>
+                        <p className="text-gray-700">[Google Ads] - Buraya AdSense reklam kodunu ekleyin. Hesabınızı ukk4550@gmail.com ile oluşturun ve onay alın.</p>
                     </div>
 
                     {/* Search Results */}
@@ -373,9 +373,9 @@
                     {isUploadModalOpen && (
                         <div className="modal" onClick={() => setIsUploadModalOpen(false)}>
                             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                                <h2 className="text-2xl font-bold mb-4 text-purple-600">Video Yükle</h2>
-                                {error && <p className="text-red-500 mb-2">{error}</p>}
-                                {success && <p className="text-green-500 mb-2">{success}</p>}
+                                <h2 className="text-2xl font-bold mb-4">Video Yükle</h2>
+                                {error && <p className="mb-2">{error}</p>}
+                                {success && <p className="mb-2">{success}</p>}
                                 <input
                                     type="text"
                                     name="title"
@@ -399,7 +399,7 @@
                                         className="hidden"
                                         id="fileInput"
                                     />
-                                    <label htmlFor="fileInput" className="cursor-pointer text-purple-600">
+                                    <label htmlFor="fileInput" className="cursor-pointer">
                                         {uploadData.file ? uploadData.file.name : 'Video dosyasını seçin veya buraya sürükleyin'}
                                     </label>
                                 </div>
